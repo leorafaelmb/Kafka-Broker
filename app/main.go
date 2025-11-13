@@ -1,14 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"os"
 )
 
 func main() {
-
 	l, err := net.Listen("tcp", "0.0.0.0:9092")
 	if err != nil {
 		fmt.Println("Failed to bind to port 9092")
@@ -28,39 +29,69 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	buf := make([]byte, 1024)
-	_, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("error reading from connection: ", err.Error())
+
+	msgSizeBuf := make([]byte, 4)
+	if _, err := conn.Read(msgSizeBuf); err != nil {
+		return
+	}
+	msgSize := binary.BigEndian.Uint32(msgSizeBuf)
+
+	reqBuf := make([]byte, msgSize)
+	if _, err := conn.Read(reqBuf); err != nil {
 		return
 	}
 
-	rh := parseRequestHeaderV2(buf)
-	resp := make([]byte, 8)
-	binary.BigEndian.PutUint32(resp[4:8], uint32(rh.CorrelationID))
+	connReader := bytes.NewBuffer(reqBuf)
+
+	resp, err := createResponse(connReader)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	_, err = conn.Write(resp)
 	if err != nil {
-		fmt.Println("error writing to connection: ", err.Error())
+		fmt.Println(err.Error())
 		return
 	}
 
 }
 
-type RequestHeaderV2 struct {
-	RequestAPIKey     int16
-	RequestAPIVersion int16
-	CorrelationID     int32
-	ClientID          string
+type ReaderByteReader interface {
+	io.Reader
+	io.ByteReader
 }
 
-func parseRequestHeaderV2(request []byte) *RequestHeaderV2 {
-	//messageSize := binary.BigEndian.Uint32(request[0:4])
-	requestAPIKey := int16(binary.BigEndian.Uint16(request[4:6]))
-	requestAPIVersion := int16(binary.BigEndian.Uint16(request[6:8]))
-	correlationID := int32(binary.BigEndian.Uint32(request[8:12]))
-	return &RequestHeaderV2{
-		RequestAPIKey:     requestAPIKey,
-		RequestAPIVersion: requestAPIVersion,
-		CorrelationID:     correlationID,
+func createResponse(connReader ReaderByteReader) ([]byte, error) {
+	requestHeader, err := deserializeRequestHeader(connReader)
+	if err != nil {
+		return nil, nil
 	}
+
+	switch requestHeader.RequestAPIKey {
+	case ApiVersions:
+		_, err := deserializeApiVersions(connReader)
+		if err != nil {
+			return nil, err
+		}
+
+		var r ApiVersionsResponse
+		version := int16(requestHeader.RequestAPIVersion)
+		if version >= 0 && version <= 4 {
+			r.ErrorCode = 0
+		} else {
+			r.ErrorCode = 35
+		}
+
+		apiResp := r.Serialize()
+		msgSize := 4 + len(apiResp)
+		resp := make([]byte, msgSize)
+
+		binary.BigEndian.PutUint32(resp[0:4], uint32(msgSize))
+		binary.BigEndian.PutUint32(resp[4:8], requestHeader.CorrelationID)
+		copy(resp[8:], apiResp)
+		return resp, nil
+
+	}
+	return nil, nil
 }
