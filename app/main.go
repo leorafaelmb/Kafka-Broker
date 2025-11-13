@@ -29,33 +29,33 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+	for {
 
-	msgSizeBuf := make([]byte, 4)
-	if _, err := conn.Read(msgSizeBuf); err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	msgSize := binary.BigEndian.Uint32(msgSizeBuf)
+		msgSizeBuf := make([]byte, 4)
+		if _, err := conn.Read(msgSizeBuf); err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		msgSize := binary.BigEndian.Uint32(msgSizeBuf)
 
-	reqBuf := make([]byte, msgSize)
-	if _, err := conn.Read(reqBuf); err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+		reqBuf := make([]byte, msgSize)
+		if _, err := conn.Read(reqBuf); err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 
-	connReader := bytes.NewBuffer(reqBuf)
-	fmt.Println("Hi")
-	resp, err := createResponse(connReader)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	fmt.Println("hey")
+		connReader := bytes.NewBuffer(reqBuf)
+		resp, err := createResponse(connReader)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 
-	_, err = conn.Write(resp)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+		_, err = conn.Write(resp)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 	}
 
 }
@@ -101,7 +101,6 @@ func createResponse(connReader ReaderByteReader) ([]byte, error) {
 		binary.BigEndian.PutUint32(resp[0:4], uint32(msgSize))
 		binary.BigEndian.PutUint32(resp[4:8], requestHeader.CorrelationID)
 		copy(resp[8:], apiResp)
-		fmt.Println(resp[8:])
 		return resp, nil
 
 	}
