@@ -18,27 +18,27 @@ func deserializeRequestHeader(connReader ReaderByteReader) (*RequestHeader, erro
 
 	if err := binary.Read(connReader, binary.BigEndian, &header.RequestAPIKey); err != nil {
 		fmt.Println("error reading request api key")
-		return nil, nil
+		return nil, err
 	}
 	if err := binary.Read(connReader, binary.BigEndian, &header.RequestAPIVersion); err != nil {
 		fmt.Println("error reading request api version")
-		return nil, nil
+		return nil, err
 	}
 	if err := binary.Read(connReader, binary.BigEndian, &header.CorrelationID); err != nil {
 		fmt.Println("error reading correlation id")
-		return nil, nil
+		return nil, err
 	}
 
 	var clientIDLength int16
 	if err := binary.Read(connReader, binary.BigEndian, &clientIDLength); err != nil {
 		fmt.Println("error reading clientID length")
-		return nil, nil
+		return nil, err
 	}
 	if clientIDLength > -1 {
 		buf := make([]byte, clientIDLength)
 		if _, err := io.ReadFull(connReader, buf); err != nil {
 			fmt.Printf("error reading client ID: %v\n", err.Error())
-			return nil, nil
+			return nil, err
 		}
 		header.ClientID = string(buf)
 	}

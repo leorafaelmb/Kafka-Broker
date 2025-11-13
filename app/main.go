@@ -32,22 +32,25 @@ func handleConnection(conn net.Conn) {
 
 	msgSizeBuf := make([]byte, 4)
 	if _, err := conn.Read(msgSizeBuf); err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	msgSize := binary.BigEndian.Uint32(msgSizeBuf)
 
 	reqBuf := make([]byte, msgSize)
 	if _, err := conn.Read(reqBuf); err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 
 	connReader := bytes.NewBuffer(reqBuf)
-
+	fmt.Println("Hi")
 	resp, err := createResponse(connReader)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+	fmt.Println("hey")
 
 	_, err = conn.Write(resp)
 	if err != nil {
@@ -65,17 +68,25 @@ type ReaderByteReader interface {
 func createResponse(connReader ReaderByteReader) ([]byte, error) {
 	requestHeader, err := deserializeRequestHeader(connReader)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	switch requestHeader.RequestAPIKey {
-	case ApiVersions:
+	case ApiVersionsApiKey:
 		_, err := deserializeApiVersions(connReader)
 		if err != nil {
 			return nil, err
 		}
 
 		var r ApiVersionsResponse
+		v := []ApiVersion{
+			{
+				APIKey:     ApiVersionsApiKey,
+				MinVersion: 0,
+				MaxVersion: 4,
+			},
+		}
+		r.ApiVersions = v
 		version := int16(requestHeader.RequestAPIVersion)
 		if version >= 0 && version <= 4 {
 			r.ErrorCode = 0
@@ -85,11 +96,12 @@ func createResponse(connReader ReaderByteReader) ([]byte, error) {
 
 		apiResp := r.Serialize()
 		msgSize := 4 + len(apiResp)
-		resp := make([]byte, msgSize)
+		resp := make([]byte, 4+msgSize)
 
 		binary.BigEndian.PutUint32(resp[0:4], uint32(msgSize))
 		binary.BigEndian.PutUint32(resp[4:8], requestHeader.CorrelationID)
 		copy(resp[8:], apiResp)
+		fmt.Println(resp[8:])
 		return resp, nil
 
 	}

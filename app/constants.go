@@ -1,5 +1,5 @@
 package main
 
 const (
-	ApiVersions = 18
+	ApiVersionsApiKey = 18
 )
