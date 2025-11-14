@@ -1,4 +1,4 @@
-package main
+package protocol
 
 import (
 	"encoding/binary"
@@ -12,14 +12,47 @@ type ApiVersionsRequest struct {
 
 type ApiVersionsResponse struct {
 	ErrorCode      int16
-	ApiVersions    []ApiVersion
+	APIKeys        []APIKey
 	ThrottleTimeMs int32
 }
 
-type ApiVersion struct {
+type APIKey struct {
 	APIKey     uint16
 	MinVersion uint16
 	MaxVersion uint16
+}
+
+const ApiVersionLength = 7
+
+func getAPIVersionsResponse(header RequestHeader) []byte {
+	versions := []APIKey{
+		{
+			APIKey:     ApiVersionsKey,
+			MinVersion: ApiVersionsMinVersion,
+			MaxVersion: ApiVersionsMaxVersion,
+		},
+		{
+			APIKey:     DescribeTopicPartitionsKey,
+			MinVersion: DescribeTopicPartitionsMinVersion,
+			MaxVersion: DescribeTopicPartitionsMaxVersion,
+		},
+	}
+	av := ApiVersionsResponse{
+		ErrorCode:      0,
+		APIKeys:        versions,
+		ThrottleTimeMs: 0,
+	}
+
+	avResp := av.Serialize()
+
+	msgSize := 4 + len(avResp)
+	resp := make([]byte, 4+msgSize)
+
+	binary.BigEndian.PutUint32(resp[0:4], uint32(msgSize))
+	binary.BigEndian.PutUint32(resp[4:8], uint32(header.CorrelationID))
+	copy(resp[8:], avResp)
+
+	return resp
 }
 
 func deserializeApiVersions(rbr ReaderByteReader) (*ApiVersionsRequest, error) {
@@ -44,6 +77,7 @@ func ReadCompactString(rbr ReaderByteReader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	buf := make([]byte, length-1)
 	if _, err = io.ReadFull(rbr, buf); err != nil {
 		return "", err
@@ -53,8 +87,8 @@ func ReadCompactString(rbr ReaderByteReader) (string, error) {
 
 }
 
-func (k ApiVersion) Serialize() []byte {
-	resp := make([]byte, k.Len())
+func (k APIKey) serialize() []byte {
+	resp := make([]byte, ApiVersionLength)
 	binary.BigEndian.PutUint16(resp[0:2], k.APIKey)
 	binary.BigEndian.PutUint16(resp[2:4], k.MinVersion)
 	binary.BigEndian.PutUint16(resp[4:6], k.MaxVersion)
@@ -68,11 +102,12 @@ func (r ApiVersionsResponse) Serialize() []byte {
 	resp := make([]byte, 0, r.Len())
 
 	resp = binary.BigEndian.AppendUint16(resp, uint16(r.ErrorCode))
-	resp = binary.AppendUvarint(resp, uint64(len(r.ApiVersions)+1))
+	resp = binary.AppendUvarint(resp, uint64(len(r.APIKeys)+1))
 
-	for _, key := range r.ApiVersions {
-		resp = append(resp, key.Serialize()...)
+	for _, key := range r.APIKeys {
+		resp = append(resp, key.serialize()...)
 	}
+
 	resp = binary.BigEndian.AppendUint32(resp, uint32(r.ThrottleTimeMs))
 
 	// tag buffer
@@ -81,18 +116,8 @@ func (r ApiVersionsResponse) Serialize() []byte {
 	return resp
 }
 
-func (k ApiVersion) Len() uint32 {
-	return 7
-}
-
 func (r ApiVersionsResponse) Len() uint32 {
-	// error code, throttle time, array length, and tag buffer
-	var length uint32 = 6
+	// error code, throttle time, array length, and tag buffer all have length 6
 
-	for _, k := range r.ApiVersions {
-		length += k.Len()
-	}
-
-	return length
-
+	return uint32(6 + ApiVersionLength*len(r.APIKeys))
 }

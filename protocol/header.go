@@ -1,4 +1,4 @@
-package main
+package protocol
 
 import (
 	"encoding/binary"
@@ -7,9 +7,9 @@ import (
 )
 
 type RequestHeader struct {
-	RequestAPIKey     uint16
-	RequestAPIVersion uint16
-	CorrelationID     uint32
+	RequestAPIKey     int16
+	RequestAPIVersion int16
+	CorrelationID     int32
 	ClientID          string
 }
 
@@ -53,5 +53,4 @@ func deserializeRequestHeader(connReader ReaderByteReader) (*RequestHeader, erro
 		return nil, err
 	}
 	return &header, nil
-
 }
