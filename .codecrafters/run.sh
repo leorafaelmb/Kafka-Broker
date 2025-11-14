@@ -8,4 +8,4 @@
 
 set -e # Exit on failure
 
-exec /tmp/kafka-broker-go/cmd/broker "$@"
+exec /tmp/kafka-broker-go/broker "$@"

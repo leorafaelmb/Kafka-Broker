@@ -37,8 +37,13 @@ func getAPIVersionsResponse(header RequestHeader) []byte {
 			MaxVersion: DescribeTopicPartitionsMaxVersion,
 		},
 	}
+	var errorCode int16 = 0
+	if header.RequestAPIVersion < 0 || header.RequestAPIVersion > 4 {
+		errorCode = 35
+	}
+
 	av := ApiVersionsResponse{
-		ErrorCode:      0,
+		ErrorCode:      errorCode,
 		APIKeys:        versions,
 		ThrottleTimeMs: 0,
 	}
