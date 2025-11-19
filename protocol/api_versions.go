@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"encoding/binary"
-	"io"
 )
 
 type ApiVersionsRequest struct {
@@ -75,21 +74,6 @@ func deserializeApiVersions(rbr ReaderByteReader) (*ApiVersionsRequest, error) {
 		ClientSoftwareName:    clientSoftwareName,
 		ClientSoftwareVersion: clientSoftwareVersion,
 	}, nil
-}
-
-func ReadCompactString(rbr ReaderByteReader) (string, error) {
-	length, err := binary.ReadUvarint(rbr)
-	if err != nil {
-		return "", err
-	}
-
-	buf := make([]byte, length-1)
-	if _, err = io.ReadFull(rbr, buf); err != nil {
-		return "", err
-	}
-
-	return string(buf), nil
-
 }
 
 func (k APIKey) serialize() []byte {

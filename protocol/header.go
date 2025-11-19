@@ -43,14 +43,9 @@ func deserializeRequestHeader(connReader ReaderByteReader) (*RequestHeader, erro
 		header.ClientID = string(buf)
 	}
 
-	numTaggedFields, err := binary.ReadUvarint(connReader)
-	if err != nil {
+	if err := DiscardTaggedFields(connReader); err != nil {
 		return nil, err
 	}
 
-	// skip over tagged fields - discard for now
-	if _, err = io.CopyN(io.Discard, connReader, int64(numTaggedFields)); err != nil {
-		return nil, err
-	}
 	return &header, nil
 }
