@@ -11,6 +11,7 @@ type RequestHeader struct {
 	RequestAPIVersion int16
 	CorrelationID     int32
 	ClientID          string
+	Body              []byte
 }
 
 func deserializeRequestHeader(connReader ReaderByteReader) (*RequestHeader, error) {

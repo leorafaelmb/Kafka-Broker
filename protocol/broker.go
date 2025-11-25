@@ -37,15 +37,12 @@ func (b *Broker) Startup() {
 func (b *Broker) HandleConnection(conn net.Conn) {
 	defer conn.Close()
 	for {
-		msgSizeBuf := make([]byte, 4)
-		if _, err := io.ReadFull(conn, msgSizeBuf); err != nil {
+		var msgSize uint32
+		if err := binary.Read(conn, binary.BigEndian, &msgSize); err != nil {
 			fmt.Println(err.Error())
-			return
 		}
-		msgSize := binary.BigEndian.Uint32(msgSizeBuf)
-
 		reqBuf := make([]byte, msgSize)
-		if _, err := conn.Read(reqBuf); err != nil {
+		if _, err := io.ReadFull(conn, reqBuf); err != nil {
 			fmt.Println(err.Error())
 			return
 		}
@@ -56,6 +53,8 @@ func (b *Broker) HandleConnection(conn net.Conn) {
 			fmt.Println(err)
 			return
 		}
+
+		header.Body = connReader.Bytes()
 
 		disp := b.APIDispatcher(header.RequestAPIKey)
 		resp := disp.Handler(*header)

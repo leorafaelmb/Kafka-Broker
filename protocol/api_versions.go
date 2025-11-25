@@ -5,8 +5,8 @@ import (
 )
 
 type ApiVersionsRequest struct {
-	ClientSoftwareName    string
-	ClientSoftwareVersion string
+	ClientSoftwareName    CompactString
+	ClientSoftwareVersion CompactString
 }
 
 type ApiVersionsResponse struct {

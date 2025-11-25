@@ -10,7 +10,7 @@ func (b *Broker) APIDispatcher(requestAPIKey int16) APIKeyHandler {
 	case ApiVersionsKey:
 		return APIKeyHandler{Name: "ApiVersions", Handler: getAPIVersionsResponse}
 	case DescribeTopicPartitionsKey:
-		return APIKeyHandler{Name: "DescribeTopicPartitions"}
+		return APIKeyHandler{Name: "DescribeTopicPartitions", Handler: getDescribeTopicPartitionsResponse}
 	default:
 		return APIKeyHandler{}
 	}
